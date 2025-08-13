@@ -1,0 +1,29 @@
+# Dependencies
+# Never commit node_modules. It can be regenerated with `npm install`.
+/node_modules
+
+# The lockfile is intentionally committed to ensure deterministic dependency installs.
+# See: https://docs.npmjs.com/cli/v10/configuring-npm/package-lock-json
+# package-lock.json
+
+# Logs
+# Log files can contain sensitive information and are specific to a single run.
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment variables
+# Contains secrets and environment-specific settings.
+.env
+.env.local
+
+# IDEs and editors
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
