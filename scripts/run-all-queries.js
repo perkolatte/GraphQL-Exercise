@@ -11,24 +11,9 @@ const RUNNER_ARGS = process.argv.slice(2);
 const RUNNER_FLAG_RAW = RUNNER_ARGS.includes("--raw");
 
 // optional config file to supply variables per-query (relative path -> variables object)
-const CONFIG_PATH = path.resolve(process.cwd(), "run-all-queries.config.json");
-let VAR_CONFIG = {};
-if (fs.existsSync(CONFIG_PATH)) {
-  try {
-    VAR_CONFIG = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8")) || {};
-  } catch (err) {
-    console.error(
-      "Invalid JSON in run-all-queries.config.json:",
-      err.message || err
-    );
-    process.exit(1);
-  }
-}
-
-// optional mapping config: query-relative-path -> script path to run instead of printing raw response
+const { loadConfig, getQueryVariables } = require("../lib/config");
+const VAR_CONFIG = loadConfig();
 const MAPPING = VAR_CONFIG.mapping || {};
-
-// optional ordered list of query paths (relative to repo root) to run first
 let ORDERED_LIST = [];
 if (Array.isArray(VAR_CONFIG.order)) {
   ORDERED_LIST = VAR_CONFIG.order.map((p) => path.resolve(process.cwd(), p));
@@ -364,12 +349,7 @@ function prettyPrintResponse(res) {
         continue;
       }
       // supply variables from config if present
-      const relKey = rel;
-      const vars =
-        VAR_CONFIG[relKey] ||
-        VAR_CONFIG["./" + relKey] ||
-        VAR_CONFIG[path.relative(process.cwd(), f)] ||
-        {};
+      const vars = getQueryVariables(VAR_CONFIG, f);
 
       if (
         requiresRequiredVariables(query) &&
@@ -410,7 +390,12 @@ function prettyPrintResponse(res) {
           variables: vars || {},
         });
 
-        // Custom pretty output for full-character-profile
+        // Use dedicated formatters for custom output
+        const {
+          formatCharacterProfile,
+          formatFilmCharacters,
+          formatAggregateStats,
+        } = require("../lib/formatters");
         if (
           relKeyNormalized.endsWith(
             "queries/complex/full-character-profile.graphql"
@@ -419,41 +404,7 @@ function prettyPrintResponse(res) {
           res.data &&
           res.data.person
         ) {
-          const person = res.data.person;
-          // Character name as heading
-          if (person.name) {
-            console.log(`Character: ${person.name}\n`);
-          }
-          // Group film titles
-          if (
-            person.filmConnection &&
-            Array.isArray(person.filmConnection.films)
-          ) {
-            console.log("Films:");
-            for (const film of person.filmConnection.films) {
-              if (film && film.title) {
-                console.log(`  - ${film.title}`);
-              }
-            }
-            console.log("");
-          }
-          // Group starship names
-          if (
-            person.starshipConnection &&
-            Array.isArray(person.starshipConnection.starships)
-          ) {
-            console.log("Starships:");
-            for (const ship of person.starshipConnection.starships) {
-              if (ship && ship.name) {
-                console.log(`  - ${ship.name}`);
-              }
-            }
-            console.log("");
-          }
-          // Show homeworld
-          if (person.homeworld && person.homeworld.name) {
-            console.log(`Homeworld: ${person.homeworld.name}\n`);
-          }
+          formatCharacterProfile(res.data.person);
         } else if (
           relKeyNormalized.endsWith(
             "queries/advanced/characters-in-film.graphql"
@@ -462,22 +413,7 @@ function prettyPrintResponse(res) {
           res.data &&
           res.data.film
         ) {
-          const film = res.data.film;
-          if (film.title) {
-            console.log(`Film: ${film.title}\n`);
-          }
-          if (
-            film.characterConnection &&
-            Array.isArray(film.characterConnection.characters)
-          ) {
-            console.log("Characters:");
-            for (const char of film.characterConnection.characters) {
-              if (char && char.name) {
-                console.log(`  - ${char.name}`);
-              }
-            }
-            console.log("");
-          }
+          formatFilmCharacters(res.data.film);
         } else if (
           relKeyNormalized.endsWith(
             "queries/advanced/aggregate-film-stats.graphql"
@@ -487,24 +423,7 @@ function prettyPrintResponse(res) {
           res.data.allFilms &&
           Array.isArray(res.data.allFilms.films)
         ) {
-          const films = res.data.allFilms.films;
-          const uniqueCharacters = new Set();
-          for (const film of films) {
-            if (
-              film.characterConnection &&
-              Array.isArray(film.characterConnection.characters)
-            ) {
-              for (const c of film.characterConnection.characters) {
-                if (c && c.name) uniqueCharacters.add(c.name);
-              }
-            }
-          }
-          console.log(`Total Unique Characters: ${uniqueCharacters.size}\n`);
-          console.log("Characters:");
-          for (const name of Array.from(uniqueCharacters).sort()) {
-            console.log(`  - ${name}`);
-          }
-          console.log("");
+          formatAggregateStats(res.data.allFilms.films);
         } else {
           prettyPrintResponse(res);
         }
