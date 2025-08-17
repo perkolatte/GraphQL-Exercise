@@ -8,6 +8,22 @@ jest.setTimeout(30000);
 const DEFAULT_ENDPOINT =
   process.env.API_ENDPOINT || "https://swapi-graphql.netlify.app/graphql";
 
+// optional config file to supply variables for tests
+const TEST_CONFIG_PATH = path.resolve(
+  process.cwd(),
+  "run-all-queries.config.json"
+);
+let TEST_VAR_CONFIG = {};
+if (fs.existsSync(TEST_CONFIG_PATH)) {
+  try {
+    TEST_VAR_CONFIG =
+      JSON.parse(fs.readFileSync(TEST_CONFIG_PATH, "utf8")) || {};
+  } catch (err) {
+    // fallback to empty config
+    TEST_VAR_CONFIG = {};
+  }
+}
+
 const tasks = [
   {
     name: "Basic - List All Films",
@@ -100,9 +116,14 @@ describe("GraphQL task query files", () => {
       query = lines.join("\n").trim();
     }
 
-    // If the document requires variables (e.g. query Get($id: ID!)), skip the live-run test
+    // If the document requires variables (e.g. query Get($id: ID!)), try to supply them from test config
     const requiresRequiredVariables = /\$\w+\s*:\s*[^)\n]+!/.test(query);
-    if (requiresRequiredVariables) {
+    const providedVars =
+      TEST_VAR_CONFIG[t.file] || TEST_VAR_CONFIG["./" + t.file] || {};
+    if (
+      requiresRequiredVariables &&
+      (!providedVars || Object.keys(providedVars).length === 0)
+    ) {
       test.skip(`${t.name} - ${t.file} (skipped: requires variables)`, () => {});
       return;
     }
@@ -114,7 +135,7 @@ describe("GraphQL task query files", () => {
 
       // Execute against live endpoint; tests will fail if executeQuery throws
       await expect(
-        executeQuery(DEFAULT_ENDPOINT, { query, variables: {} })
+        executeQuery(DEFAULT_ENDPOINT, { query, variables: providedVars || {} })
       ).resolves.toBeDefined();
     });
   });
