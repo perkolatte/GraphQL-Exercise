@@ -1,0 +1,18 @@
+query FullCharacterProfile {
+  person(id: "cGVvcGxlOjE=") {
+    name
+    filmConnection {
+      films {
+        title
+      }
+    }
+    starshipConnection {
+      starships {
+        name
+      }
+    }
+    homeworld {
+      name
+    }
+  }
+}
