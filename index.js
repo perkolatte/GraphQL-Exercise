@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 const path = require("path");
-const { readQueryFile, parseVariablesArg } = require("./lib/io");
-const { executeQuery, printGraphQLErrors } = require("./lib/graphql");
+const { readQueryFile, parseVariablesArg } = require("./lib/cli");
+const { executeQuery, printGraphQLErrors } = require("./lib/graphql-client");
 
 /**
  * Exit codes:
