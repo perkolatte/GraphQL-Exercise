@@ -158,7 +158,7 @@ const main = async () => {
     const endpoint =
       endpointArg || process.env.API_ENDPOINT || DEFAULT_ENDPOINT;
 
-    console.log(`Executing against: ${endpoint}`);
+    console.error(`Executing against: ${endpoint}`);
     const result = await executeQuery(endpoint, {
       query,
       variables,

@@ -1,0 +1,12 @@
+query PeopleFilmCounts {
+  allPeople {
+    edges {
+      node {
+        name
+        filmConnection {
+          totalCount
+        }
+      }
+    }
+  }
+}

@@ -4,7 +4,9 @@
   "main": "index.js",
   "scripts": {
     "test": "jest --runInBand --verbose",
-    "query": "node index.js"
+    "query": "node index.js",
+    "find-multi-film-characters": "node scripts/find-multi-film-characters.js",
+    "multi-film-people": "node index.js queries/advanced/multi-film-characters.graphql | jq -r '.data.allPeople.edges[] | .node | select(.filmConnection.totalCount > 1) | \"\\(.name) - \\(.filmConnection.totalCount) films\"'"
   },
   "repository": {
     "type": "git",
