@@ -1,3 +1,4 @@
+// Design by Contract: Documents expected input/output and asserts preconditions for main and utility functions.
 const path = require("path");
 const fs = require("fs");
 const { executeQuery } = require("../lib/graphql-client");
@@ -5,41 +6,34 @@ const { executeQuery } = require("../lib/graphql-client");
 const ENDPOINT =
   process.env.API_ENDPOINT || "https://star-wars-sb.netlify.app/graphql";
 
-(async function main() {
+/**
+ * Main entry point for aggregate film stats script.
+ * Loads config, reads query, executes, and prints results.
+ * @throws {Error} If config or query file is missing/invalid
+ */
+async function main() {
   try {
-    // Load config for query IDs
-    const configPath = path.resolve(
-      process.cwd(),
-      "run-all-queries.config.json"
-    );
-    let config = {};
-    if (fs.existsSync(configPath)) {
-      try {
-        config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-      } catch (err) {
-        console.error(
-          "Invalid JSON in run-all-queries.config.json:",
-          err.message || err
-        );
-        process.exit(1);
-      }
-    }
-    const queryRelPath = "queries/advanced/aggregate-film-stats.graphql";
-    const qpath = path.resolve(__dirname, "..", queryRelPath);
-    if (!fs.existsSync(qpath)) {
-      console.error("Query file missing:", qpath);
-      process.exit(1);
-    }
-    const query = fs.readFileSync(qpath, "utf8").trim();
-    if (!query) {
-      console.error("Empty query");
-      process.exit(1);
-    }
+    // ...existing code...
+  } catch (err) {
+    // ...existing code...
+  }
 
-    // Get ID from config, fallback to null
-    const queryId = (config[queryRelPath] && config[queryRelPath].id) || null;
-    const variables = queryId ? { id: queryId } : {};
-    const res = await executeQuery(ENDPOINT, { query, variables });
+// CLI wrapper
+const runCli = require("../lib/cli-wrapper");
+runCli(main);
+    const { loadConfig, getQueryVariables } = require("../lib/config");
+    const config = loadConfig();
+    const queryRelativePath = "queries/advanced/aggregate-film-stats.graphql";
+    const queryFilePath = path.resolve(__dirname, "..", queryRelativePath);
+    if (!fs.existsSync(queryFilePath)) {
+      throw new Error("Query file missing: " + queryFilePath);
+    }
+    const queryText = fs.readFileSync(queryFilePath, "utf8").trim();
+    if (!queryText) {
+      throw new Error("Empty query");
+    }
+    const variables = getQueryVariables(config, queryFilePath);
+    const res = await executeQuery(ENDPOINT, { query: queryText, variables });
     // normalize a list of film objects regardless of edges/node wrapper
     let films = [];
     const allFilms = res && res.data && res.data.allFilms;
@@ -132,19 +126,36 @@ const ENDPOINT =
     }
 
     console.log(`Unique characters across all films: ${uniqueMap.size}`);
-    // print deduplicated list sorted by name
+    const {
+      formatAggregateStats,
+      printFormatted,
+    } = require("../lib/formatters");
+    // Example usage:
+    // printFormatted(formatAggregateStats(result.allFilms.films));
     const list = Array.from(uniqueMap.values()).sort((a, b) => {
       const na = (a.name || "").toLowerCase();
       const nb = (b.name || "").toLowerCase();
       return na.localeCompare(nb);
     });
     for (const item of list) {
-      if (item.id) console.log(`${item.name || "(no-name)"} - ${item.id}`);
-      else console.log(`${item.name}`);
+      if (item.id) printFormatted(`${item.name || "(no-name)"} - ${item.id}`);
+      else printFormatted(`${item.name}`);
     }
-    process.exit(0);
+    return 0;
   } catch (err) {
     console.error(err.message || err);
-    process.exit(1);
+    return 1;
   }
-})();
+
+// CLI wrapper
+if (require.main === module) {
+  (async () => {
+    try {
+      const code = await main();
+      process.exit(code || 0);
+    } catch (err) {
+      console.error(err.message || err);
+      process.exit(1);
+    }
+  })();
+}

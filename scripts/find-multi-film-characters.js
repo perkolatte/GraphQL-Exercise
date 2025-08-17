@@ -5,52 +5,34 @@ const { executeQuery } = require("../lib/graphql-client");
 const ENDPOINT =
   process.env.API_ENDPOINT || "https://star-wars-sb.netlify.app/graphql";
 
+/**
+ * Main entry point for multi-film-characters script.
+ * Loads config, reads query, executes, and prints results.
+ * @throws {Error} If config or query file is missing/invalid
+ */
 async function main() {
   // Load config for query IDs
-  const configPath = path.resolve(process.cwd(), "run-all-queries.config.json");
-  let config = {};
-  if (fs.existsSync(configPath)) {
-    try {
-      config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-    } catch (err) {
-      console.error(
-        "Invalid JSON in run-all-queries.config.json:",
-        err.message || err
-      );
-      process.exit(1);
-    }
-  }
-  const queryRelPath = "queries/advanced/multi-film-characters.graphql";
-  const qpath = path.resolve(__dirname, "..", queryRelPath);
-  if (!fs.existsSync(qpath)) {
-    console.error("Query file missing:", qpath);
-    process.exit(1);
+  const { loadConfig } = require("../lib/config");
+  const config = loadConfig();
+  const queryRelativePath = "queries/advanced/multi-film-characters.graphql";
+  const queryFilePath = path.resolve(__dirname, "..", queryRelativePath);
+  if (!fs.existsSync(queryFilePath)) {
+    throw new Error(`Query file missing: ${queryFilePath}`);
   }
   // sanitize query files that may contain markdown fences or leading '>' blockquote markers
-  function sanitizeQuery(s) {
-    if (!s || typeof s !== "string") return "";
-    let out = s;
-    // remove a leading fenced code block marker like ```graphql\n
-    out = out.replace(/^\s*```(?:[a-zA-Z0-9-_]+)?\n/, "");
-    // remove a trailing fenced code block (the closing ``` and anything after)
-    out = out.replace(/\n```[\s\S]*$/m, "");
-    // remove '>' blockquote markers at line starts
-    out = out.replace(/^\s*>\s?/gm, "");
-    return out.trim();
-  }
+  const { sanitizeQuery } = require("../lib/sanitize-query");
 
-  const raw = fs.readFileSync(qpath, "utf8");
+  const raw = fs.readFileSync(queryFilePath, "utf8");
   const query = sanitizeQuery(raw);
   if (!query) {
-    console.error("Query file is empty after stripping fences:", qpath);
-    process.exit(1);
+    throw new Error(
+      "Query file is empty after stripping fences: " + queryFilePath
+    );
   }
 
-  // Get ID from config, fallback to null
-  const queryId = (config[queryRelPath] && config[queryRelPath].id) || null;
-
-  // Pass queryId as variable if needed
-  const variables = queryId ? { id: queryId } : {};
+  // Use shared variable resolution utility
+  const { getQueryVariables } = require("../lib/config");
+  const variables = getQueryVariables(config, queryFilePath);
   const res = await executeQuery(ENDPOINT, { query, variables });
   const data = res && res.data;
   // Helper: extract people nodes from various shapes
@@ -85,9 +67,11 @@ async function main() {
           b.count - a.count || (a.name || "").localeCompare(b.name || "")
       );
     if (multiPeople.length) {
-      console.log("Characters appearing in more than one film:");
+      const { printFormatted } = require("../lib/formatters");
+      let output = "Characters appearing in more than one film:\n";
       for (const m of multiPeople)
-        console.log(`- ${m.name || "(no-name)"} (${m.count})`);
+        output += `- ${m.name || "(no-name)"} (${m.count})\n`;
+      printFormatted(output);
       return;
     }
     // fallthrough to film-based grouping if no multi-film people found
@@ -156,19 +140,25 @@ async function main() {
     );
 
   if (!multi.length) {
-    console.log("No characters found in more than one film.");
+    const { printFormatted } = require("../lib/formatters");
+    printFormatted("No characters found in more than one film.\n");
     return;
   }
 
-  console.log("Characters appearing in more than one film:");
+  const { printFormatted } = require("../lib/formatters");
+  let output = "Characters appearing in more than one film:\n";
   for (const m of multi) {
-    console.log(
-      `- ${m.name || "(no-name)"} (${m.films.length}): ${m.films.join(", ")}`
-    );
+    output += `- ${m.name || "(no-name)"} (${m.films.length}): ${m.films.join(
+      ", "
+    )}\n`;
   }
+  printFormatted(output);
 }
 
 main().catch((err) => {
-  console.error(err.message || err);
-  process.exit(1);
+  // ...existing code...
+
+  // CLI wrapper
+  const runCli = require("../lib/cli-wrapper");
+  runCli(main);
 });

@@ -3,7 +3,12 @@ const path = require("path");
 const { readQueryFile } = require("../lib/cli");
 const { executeQuery } = require("../lib/graphql-client");
 
-(async () => {
+/**
+ * Main entry point for run-gql-query script.
+ * Loads query, config, executes, and prints results.
+ * @throws {Error} If query file or config is missing/invalid
+ */
+async function main() {
   try {
     const qfile =
       process.argv[2] ||
@@ -11,11 +16,17 @@ const { executeQuery } = require("../lib/graphql-client");
         process.cwd(),
         "queries/advanced/multi-film-characters.graphql"
       );
+    if (typeof qfile !== "string" || !qfile.endsWith(".graphql")) {
+      throw new Error("qfile must be a .graphql filename string");
+    }
     const q = await readQueryFile(qfile);
 
     // Load config and resolve query variables
     const { loadConfig, getQueryVariables } = require("../lib/config");
     const config = loadConfig();
+    if (typeof config !== "object" || config === null) {
+      throw new Error("Config must be an object");
+    }
     let vars = getQueryVariables(config, qfile);
     // If running full-character-profile, set default id if not present
     if (qfile.endsWith("queries/complex/full-character-profile.graphql")) {
@@ -63,6 +74,10 @@ const { executeQuery } = require("../lib/graphql-client");
     }
   } catch (e) {
     process.stderr.write("ERR " + (e.message || e) + "\n");
-    process.exit(1);
+    return 1;
   }
-})();
+}
+
+// CLI wrapper
+const runCli = require("../lib/cli-wrapper");
+runCli(main);
