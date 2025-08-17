@@ -1,5 +1,25 @@
 {
   "queries/basic/fetch-specific-character.graphql": {
     "id": "cGVvcGxlOjE="
-  }
+  },
+  "order": [
+    "queries/basic/list-all-films.graphql",
+    "queries/basic/fetch-specific-character.graphql",
+    "queries/basic/list-first-5-planets.graphql",
+    "queries/basic/list-3-starships.graphql",
+
+    "queries/intermediate/characters-starships.graphql",
+    "queries/intermediate/species-languages.graphql",
+    "queries/intermediate/planets-climates.graphql",
+    "queries/intermediate/vehicles-costs.graphql",
+
+    "queries/advanced/characters-in-film.graphql",
+    "queries/advanced/multi-film-characters.graphql",
+    "queries/advanced/aggregate-film-stats.graphql",
+
+    "queries/complex/full-character-profile.graphql",
+    "queries/complex/characters-with-planets.graphql",
+    "queries/complex/vehicles-pilots-species.graphql",
+    "queries/complex/films-related-entities.graphql"
+  ]
 }

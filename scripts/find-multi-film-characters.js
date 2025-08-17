@@ -39,61 +39,106 @@ async function main() {
 
   const res = await executeQuery(ENDPOINT, { query });
   const data = res && res.data;
+  // Helper: extract people nodes from various shapes
+  const extractPeopleNodes = (allPeople) => {
+    if (!allPeople) return [];
+    if (Array.isArray(allPeople.people))
+      return allPeople.people.filter(Boolean);
+    if (Array.isArray(allPeople.edges))
+      return allPeople.edges.map((e) => e && e.node).filter(Boolean);
+    if (Array.isArray(allPeople)) return allPeople.filter(Boolean);
+    return [];
+  };
 
-  // prefer people shape: allPeople.edges[].node.filmConnection.totalCount
-  if (data && data.allPeople && Array.isArray(data.allPeople.edges)) {
-    const people = data.allPeople.edges
-      .map((e) => e && e.node)
-      .filter(Boolean)
-      .map((p) => ({
-        id: p.id,
-        name: p.name,
-        count: (p.filmConnection && p.filmConnection.totalCount) || 0,
-      }));
+  // Try people-first approach: look for allPeople and filmConnection.totalCount
+  const peopleNodes = extractPeopleNodes(data && data.allPeople);
+  if (peopleNodes.length) {
+    const people = peopleNodes.map((p) => {
+      const count =
+        (p && p.filmConnection && p.filmConnection.totalCount) ||
+        (p &&
+          p.filmConnection &&
+          Array.isArray(p.filmConnection.films) &&
+          p.filmConnection.films.length) ||
+        0;
+      return { id: p.id || null, name: p.name || null, count };
+    });
 
     const multiPeople = people
       .filter((p) => p.count > 1)
-      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-
-    if (!multiPeople.length) {
-      console.log("No characters found with filmConnection.totalCount > 1.");
+      .sort(
+        (a, b) =>
+          b.count - a.count || (a.name || "").localeCompare(b.name || "")
+      );
+    if (multiPeople.length) {
+      console.log("Characters appearing in more than one film:");
+      for (const m of multiPeople)
+        console.log(`- ${m.name || "(no-name)"} (${m.count})`);
       return;
     }
-
-    console.log("Characters appearing in more than one film:");
-    for (const m of multiPeople) {
-      console.log(`- ${m.name} (${m.count})`);
-    }
-    return;
+    // fallthrough to film-based grouping if no multi-film people found
   }
 
-  // fallback: films -> characters grouping
-  const films = (data && data.allFilms && data.allFilms.edges) || [];
+  // Fallback: examine films -> characters. Support multiple shapes for films and characters
+  const extractFilms = (allFilms) => {
+    if (!allFilms) return [];
+    if (Array.isArray(allFilms.films)) return allFilms.films.filter(Boolean);
+    if (Array.isArray(allFilms.edges))
+      return allFilms.edges.map((e) => e && e.node).filter(Boolean);
+    if (Array.isArray(allFilms)) return allFilms.filter(Boolean);
+    return [];
+  };
 
-  // collect {id, name, film}
+  const films = extractFilms(data && data.allFilms);
+
+  // collect rows of appearance { key, id, name, film }
   const rows = [];
-  for (const e of films) {
-    const film = e.node;
-    const title = film.title || "(unknown)";
-    const chars = film.characters || [];
+  for (const film of films) {
+    const title = film && (film.title || film.name || "(unknown)");
+    // possible character containers on a film:
+    // film.characters (array)
+    // film.characterConnection.characters (array)
+    // film.characterConnection.edges[].node
+    let chars = [];
+    if (Array.isArray(film.characters)) chars = film.characters;
+    else if (
+      film.characterConnection &&
+      Array.isArray(film.characterConnection.characters)
+    )
+      chars = film.characterConnection.characters;
+    else if (
+      film.characterConnection &&
+      Array.isArray(film.characterConnection.edges)
+    )
+      chars = film.characterConnection.edges
+        .map((e) => e && e.node)
+        .filter(Boolean);
+    else if (Array.isArray(film.people)) chars = film.people;
+
     for (const c of chars) {
-      rows.push({ id: c.id, name: c.name, film: title });
+      if (!c) continue;
+      const id = c.id || null;
+      const name = c.name || null;
+      const key = id || `name:${name}`;
+      rows.push({ key, id, name, film: title });
     }
   }
 
-  // group by id
-  const byId = new Map();
+  // group by key (id preferred, else name)
+  const grouped = new Map();
   for (const r of rows) {
-    if (!byId.has(r.id))
-      byId.set(r.id, { id: r.id, name: r.name, films: new Set() });
-    byId.get(r.id).films.add(r.film);
+    if (!grouped.has(r.key))
+      grouped.set(r.key, { id: r.id, name: r.name, films: new Set() });
+    grouped.get(r.key).films.add(r.film);
   }
 
-  const multi = Array.from(byId.values())
-    .map((x) => ({ id: x.id, name: x.name, films: Array.from(x.films) }))
-    .filter((x) => x.films.length > 1)
+  const multi = Array.from(grouped.values())
+    .map((g) => ({ id: g.id, name: g.name, films: Array.from(g.films) }))
+    .filter((g) => g.films.length > 1)
     .sort(
-      (a, b) => b.films.length - a.films.length || a.name.localeCompare(b.name)
+      (a, b) =>
+        b.films.length - a.films.length ||
+        (a.name || "").localeCompare(b.name || "")
     );
 
   if (!multi.length) {
@@ -103,7 +148,9 @@ async function main() {
 
   console.log("Characters appearing in more than one film:");
   for (const m of multi) {
-    console.log(`- ${m.name} (${m.films.length}): ${m.films.join(", ")}`);
+    console.log(
+      `- ${m.name || "(no-name)"} (${m.films.length}): ${m.films.join(", ")}`
+    );
   }
 }
 

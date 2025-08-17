@@ -3,10 +3,8 @@ query GetFilmCharacters {
   film(id: "ZmlsbXM6Mg==") {
     title
     characterConnection {
-      edges {
-        node {
-          name
-        }
+      characters {
+        name
       }
     }
   }

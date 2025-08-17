@@ -21,6 +21,12 @@ if (fs.existsSync(CONFIG_PATH)) {
   }
 }
 
+// optional ordered list of query paths (relative to repo root) to run first
+let ORDERED_LIST = [];
+if (Array.isArray(VAR_CONFIG.order)) {
+  ORDERED_LIST = VAR_CONFIG.order.map((p) => path.resolve(process.cwd(), p));
+}
+
 async function findGraphqlFiles(dir) {
   const entries = await fs.promises.readdir(dir, { withFileTypes: true });
   const files = [];
@@ -65,8 +71,30 @@ function requiresRequiredVariables(query) {
       process.exit(1);
     }
 
-    const files = await findGraphqlFiles(root);
-    if (!files.length) {
+    const discovered = await findGraphqlFiles(root);
+    // normalize discovery to absolute paths
+    const discoveredSet = new Set(discovered.map((p) => path.resolve(p)));
+
+    // if ORDERED_LIST provided, start with those entries (only if they exist)
+    let files = [];
+    if (ORDERED_LIST.length) {
+      for (const entry of ORDERED_LIST) {
+        if (discoveredSet.has(entry)) {
+          files.push(entry);
+          discoveredSet.delete(entry);
+        } else if (fs.existsSync(entry)) {
+          // allow running files outside queries/ if user provided full path
+          files.push(entry);
+        }
+      }
+      // append any remaining discovered files in sorted order for determinism
+      const remaining = Array.from(discoveredSet).sort();
+      files.push(...remaining);
+    } else {
+      files = discovered;
+    }
+
+    if (!files || files.length === 0) {
       console.error("No .graphql files found under queries/");
       process.exit(1);
     }

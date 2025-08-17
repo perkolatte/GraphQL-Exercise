@@ -90,6 +90,34 @@ const tasks = [
   },
 ];
 
+// If run-all-queries.config.json supplies an ordered `order` array, use it to rearrange tasks
+const ORDER_CONFIG_PATH = path.resolve(
+  process.cwd(),
+  "run-all-queries.config.json"
+);
+if (fs.existsSync(ORDER_CONFIG_PATH)) {
+  try {
+    const cfg = JSON.parse(fs.readFileSync(ORDER_CONFIG_PATH, "utf8")) || {};
+    if (Array.isArray(cfg.order) && cfg.order.length) {
+      const orderMap = new Map(cfg.order.map((p, i) => [path.resolve(p), i]));
+      tasks.sort((a, b) => {
+        const aPath = path.resolve(a.file);
+        const bPath = path.resolve(b.file);
+        const ai = orderMap.has(aPath)
+          ? orderMap.get(aPath)
+          : Number.MAX_SAFE_INTEGER;
+        const bi = orderMap.has(bPath)
+          ? orderMap.get(bPath)
+          : Number.MAX_SAFE_INTEGER;
+        if (ai !== bi) return ai - bi;
+        return a.file.localeCompare(b.file);
+      });
+    }
+  } catch (err) {
+    // ignore parse errors and keep default ordering
+  }
+}
+
 describe("GraphQL task query files", () => {
   tasks.forEach((t) => {
     const abs = path.resolve(t.file);
