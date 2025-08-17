@@ -1,0 +1,16 @@
+# Vehicles, Their Pilots, and Pilots' Species: For the first 3 vehicles, list their names, pilots, and the species of those pilots.
+query VehiclesWithPilotsAndSpecies {
+  allVehicles(first: 3) {
+    vehicles {
+      name
+      pilotConnection {
+        pilots {
+          name
+          species {
+            name
+          }
+        }
+      }
+    }
+  }
+}
