@@ -1,6 +1,7 @@
 query PeopleFilmCounts {
   allPeople {
     people {
+      id
       name
       filmConnection {
         totalCount
