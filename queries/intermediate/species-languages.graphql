@@ -1,0 +1,10 @@
+query SpeciesLanguages {
+  allSpecies(first: 5) {
+    edges {
+      node {
+        name
+        language
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+query First5PeopleStarships {
+  allPeople(first: 5) {
+    edges {
+      node {
+        name
+        starshipConnection {
+          starships {
+            name
+          }
+        }
+      }
+    }
+  }
+}

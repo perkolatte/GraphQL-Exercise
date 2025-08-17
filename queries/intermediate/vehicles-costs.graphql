@@ -1,0 +1,10 @@
+query vehiclesCosts {
+  allVehicles(first: 5) {
+    edges {
+      node {
+        name
+        costInCredits
+      }
+    }
+  }
+}

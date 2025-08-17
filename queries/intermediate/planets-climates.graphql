@@ -1,0 +1,11 @@
+query PlanetsAndClimates {
+  allPlanets(first: 5) {
+    edges {
+      node {
+        id
+        name
+        climates
+      }
+    }
+  }
+}

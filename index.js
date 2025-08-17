@@ -61,7 +61,7 @@ const printSelection = (result, selectPath, label) => {
  * 3 = HTTP error (non-2xx)
  * 4 = network error / no response
  */
-const DEFAULT_ENDPOINT = "https://swapi-graphql.netlify.app/graphql";
+const DEFAULT_ENDPOINT = "https://star-wars-sb.netlify.app/graphql";
 
 // ...IO and GraphQL helpers are in lib/*
 
