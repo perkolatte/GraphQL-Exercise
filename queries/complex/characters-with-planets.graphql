@@ -1,0 +1,12 @@
+# Link Characters with Their Planets: Query the first 5 characters, including the name and population of their homeworld.
+query CharactersWithPlanets {
+  allPeople(first: 5) {
+    people {
+      name
+      homeworld {
+        name
+        population
+      }
+    }
+  }
+}
