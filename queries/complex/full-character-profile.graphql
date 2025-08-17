@@ -1,5 +1,7 @@
-query FullCharacterProfile {
-  person(id: "cGVvcGxlOjE=") {
+query FullCharacterProfile($ID: ID!) {
+  person(id: $ID) {
+    name
+    # Show character name
     name
     filmConnection {
       films {

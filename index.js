@@ -61,16 +61,6 @@ function prettyPrintResponse(res, opts = {}) {
   }
 
   const prettyPrintObject = (obj, indent = "") => {
-    const SKIP_KEYS = new Set([
-      "characterConnection",
-      "planetConnection",
-      "starshipConnection",
-      "filmConnection",
-      "connection",
-      "edges",
-      "node",
-      "__typename",
-    ]);
     if (obj === null || obj === undefined) {
       console.log(indent + "null");
       return;
@@ -80,7 +70,7 @@ function prettyPrintResponse(res, opts = {}) {
       return;
     }
 
-    const keys = Object.keys(obj).filter((k) => !SKIP_KEYS.has(k));
+    const keys = Object.keys(obj);
     for (const k of keys) {
       const v = obj[k];
       const label = k[0].toUpperCase() + k.slice(1);

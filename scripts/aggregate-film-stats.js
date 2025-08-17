@@ -7,13 +7,25 @@ const ENDPOINT =
 
 (async function main() {
   try {
-    const qpath = path.resolve(
-      __dirname,
-      "..",
-      "queries",
-      "advanced",
-      "aggregate-film-stats.graphql"
+    // Load config for query IDs
+    const configPath = path.resolve(
+      process.cwd(),
+      "run-all-queries.config.json"
     );
+    let config = {};
+    if (fs.existsSync(configPath)) {
+      try {
+        config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+      } catch (err) {
+        console.error(
+          "Invalid JSON in run-all-queries.config.json:",
+          err.message || err
+        );
+        process.exit(1);
+      }
+    }
+    const queryRelPath = "queries/advanced/aggregate-film-stats.graphql";
+    const qpath = path.resolve(__dirname, "..", queryRelPath);
     if (!fs.existsSync(qpath)) {
       console.error("Query file missing:", qpath);
       process.exit(1);
@@ -24,7 +36,10 @@ const ENDPOINT =
       process.exit(1);
     }
 
-    const res = await executeQuery(ENDPOINT, { query });
+    // Get ID from config, fallback to null
+    const queryId = (config[queryRelPath] && config[queryRelPath].id) || null;
+    const variables = queryId ? { id: queryId } : {};
+    const res = await executeQuery(ENDPOINT, { query, variables });
     // normalize a list of film objects regardless of edges/node wrapper
     let films = [];
     const allFilms = res && res.data && res.data.allFilms;

@@ -2,6 +2,9 @@
   "queries/basic/fetch-specific-character.graphql": {
     "id": "cGVvcGxlOjE="
   },
+  "queries/complex/full-character-profile.graphql": {
+    "ID": "cGVvcGxlOjE="
+  },
   "mapping": {
     "queries/advanced/multi-film-characters.graphql": "scripts/find-multi-film-characters.js"
   },

@@ -79,16 +79,6 @@ function prettyPrintResponse(res) {
   }
 
   const prettyPrintObject = (obj, indent = "") => {
-    const SKIP_KEYS = new Set([
-      "characterConnection",
-      "planetConnection",
-      "starshipConnection",
-      "filmConnection",
-      "connection",
-      "edges",
-      "node",
-      "__typename",
-    ]);
     if (obj === null || obj === undefined) {
       console.log(indent + "null");
       return;
@@ -98,7 +88,7 @@ function prettyPrintResponse(res) {
       return;
     }
 
-    const keys = Object.keys(obj).filter((k) => !SKIP_KEYS.has(k));
+    const keys = Object.keys(obj);
     for (const k of keys) {
       const v = obj[k];
       const label = k[0].toUpperCase() + k.slice(1);
@@ -420,47 +410,104 @@ function prettyPrintResponse(res) {
           variables: vars || {},
         });
 
-        // Special formatting for vehicles->pilots query: show friendly message when no pilots
+        // Custom pretty output for full-character-profile
         if (
-          /vehicles-pilots-species\.graphql$/.test(f) ||
-          /pilotConnection/.test(query)
+          relKeyNormalized.endsWith(
+            "queries/complex/full-character-profile.graphql"
+          ) &&
+          res &&
+          res.data &&
+          res.data.person
         ) {
-          try {
-            const vehicles =
-              res &&
-              res.data &&
-              res.data.allVehicles &&
-              res.data.allVehicles.vehicles;
-            if (Array.isArray(vehicles)) {
-              for (const v of vehicles) {
-                const name = v && v.name;
-                const pilots =
-                  v &&
-                  v.pilotConnection &&
-                  (v.pilotConnection.pilots || v.pilotConnection.edges);
-                if (!pilots || (Array.isArray(pilots) && pilots.length === 0)) {
-                  console.log(`${name}: No pilots on record`);
-                } else {
-                  // pilots may be nodes or direct objects
-                  const list = pilots
-                    .map((p) => p && (p.node ? p.node : p))
-                    .filter(Boolean);
-                  for (const p of list) {
-                    const pname = p.name || "(no-name)";
-                    const sname =
-                      p.species && p.species.name ? ` (${p.species.name})` : "";
-                    console.log(`${name}: ${pname}${sname}`);
-                  }
-                }
-              }
-              continue; // already printed friendly output
-            }
-          } catch (fmtErr) {
-            // fall back to printing full JSON
+          const person = res.data.person;
+          // Character name as heading
+          if (person.name) {
+            console.log(`Character: ${person.name}\n`);
           }
+          // Group film titles
+          if (
+            person.filmConnection &&
+            Array.isArray(person.filmConnection.films)
+          ) {
+            console.log("Films:");
+            for (const film of person.filmConnection.films) {
+              if (film && film.title) {
+                console.log(`  - ${film.title}`);
+              }
+            }
+            console.log("");
+          }
+          // Group starship names
+          if (
+            person.starshipConnection &&
+            Array.isArray(person.starshipConnection.starships)
+          ) {
+            console.log("Starships:");
+            for (const ship of person.starshipConnection.starships) {
+              if (ship && ship.name) {
+                console.log(`  - ${ship.name}`);
+              }
+            }
+            console.log("");
+          }
+          // Show homeworld
+          if (person.homeworld && person.homeworld.name) {
+            console.log(`Homeworld: ${person.homeworld.name}\n`);
+          }
+        } else if (
+          relKeyNormalized.endsWith(
+            "queries/advanced/characters-in-film.graphql"
+          ) &&
+          res &&
+          res.data &&
+          res.data.film
+        ) {
+          const film = res.data.film;
+          if (film.title) {
+            console.log(`Film: ${film.title}\n`);
+          }
+          if (
+            film.characterConnection &&
+            Array.isArray(film.characterConnection.characters)
+          ) {
+            console.log("Characters:");
+            for (const char of film.characterConnection.characters) {
+              if (char && char.name) {
+                console.log(`  - ${char.name}`);
+              }
+            }
+            console.log("");
+          }
+        } else if (
+          relKeyNormalized.endsWith(
+            "queries/advanced/aggregate-film-stats.graphql"
+          ) &&
+          res &&
+          res.data &&
+          res.data.allFilms &&
+          Array.isArray(res.data.allFilms.films)
+        ) {
+          const films = res.data.allFilms.films;
+          const uniqueCharacters = new Set();
+          for (const film of films) {
+            if (
+              film.characterConnection &&
+              Array.isArray(film.characterConnection.characters)
+            ) {
+              for (const c of film.characterConnection.characters) {
+                if (c && c.name) uniqueCharacters.add(c.name);
+              }
+            }
+          }
+          console.log(`Total Unique Characters: ${uniqueCharacters.size}\n`);
+          console.log("Characters:");
+          for (const name of Array.from(uniqueCharacters).sort()) {
+            console.log(`  - ${name}`);
+          }
+          console.log("");
+        } else {
+          prettyPrintResponse(res);
         }
-
-        prettyPrintResponse(res);
       } catch (err) {
         process.stderr.write(" (error executing query)\n");
         process.stderr.write(
