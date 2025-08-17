@@ -7,7 +7,8 @@
     "query": "node index.js",
     "find-multi-film-characters": "node scripts/find-multi-film-characters.js",
     "multi-film-people": "node index.js queries/advanced/multi-film-characters.graphql | jq -r '.data.allPeople.edges[] | .node | select(.filmConnection.totalCount > 1) | \"\\(.name) - \\(.filmConnection.totalCount) films\"'",
-    "aggregate-film-stats": "node scripts/aggregate-film-stats.js"
+    "aggregate-film-stats": "node scripts/aggregate-film-stats.js",
+    "run-all-queries": "node scripts/run-all-queries.js"
   },
   "repository": {
     "type": "git",
