@@ -1,0 +1,9 @@
+query ListFirst5Planets {
+  allPlanets(first: 5) {
+    edges {
+      node {
+        name
+      }
+    }
+  }
+}

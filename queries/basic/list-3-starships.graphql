@@ -1,0 +1,10 @@
+query ListFirst3Starships {
+  allStarships(first: 3) {
+    edges {
+      node {
+        name
+        model
+      }
+    }
+  }
+}
